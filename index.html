@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>팀플 시간 정하기</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;color:#202938;background:#f5f7fb;--blue:#315ee8;--line:#dfe5ef}
+*{box-sizing:border-box}body{margin:0}header{background:#fff;border-bottom:1px solid var(--line);padding:20px max(18px,calc((100% - 1000px)/2))}h1{font-size:1.45rem;margin:0}header p{margin:5px 0 0;color:#647084;font-size:.92rem}
+main{max-width:1000px;margin:22px auto;padding:0 16px 40px;display:grid;gap:16px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 3px 12px #17255408}.card h2{font-size:1.08rem;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}label{font-size:.9rem;font-weight:650}input,select{width:100%;min-width:0;border:1px solid #cbd4e2;border-radius:9px;padding:10px 11px;font:inherit;background:#fff;color:inherit}button{border:0;border-radius:9px;background:var(--blue);color:#fff;padding:10px 14px;font:inherit;font-weight:650;cursor:pointer}button.secondary{background:#edf1fa;color:#273653}button.danger{background:#fff0f0;color:#a42b2b}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.muted{color:#68758a;font-size:.9rem}.notice{margin-top:12px;padding:10px 12px;border-radius:9px;background:#eef4ff;color:#2446a6;display:none}.notice.error{background:#fff0f0;color:#a42b2b}.pill{display:inline-block;background:#edf1fa;padding:4px 9px;border-radius:999px;font-size:.82rem}.teamhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.list{display:grid;gap:9px;margin-top:12px}.item{border:1px solid var(--line);border-radius:11px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px}.item strong{display:block}.item small{color:#68758a}.item .actions{margin:0}.empty{padding:16px;text-align:center;color:#68758a;background:#f8faff;border-radius:10px}.hidden{display:none!important}.status{font-size:.86rem;color:#526176}.code{font-weight:800;letter-spacing:1.5px;font-size:1.1rem;color:#2446a6}.recommend{border:1px solid #cbd7ff;background:#f7f9ff}.recommend strong{color:#2446a6}@media(max-width:620px){main{margin-top:12px}.grid{grid-template-columns:1fr}.card{padding:15px}.item{align-items:flex-start;flex-direction:column}.item .actions{width:100%}.item button{flex:1}}
+</style>
+</head>
+<body>
+<header><h1>팀플 시간 정하기</h1><p>팀원들의 가능한 시간을 모아 공통 회의 시간을 찾아보세요.</p></header>
+<main>
+<section class="card">
+<h2>1. 팀 만들기 또는 참여하기</h2>
+<div class="grid">
+<form id="createForm">
+<div class="field"><label for="teamName">팀 이름</label><input id="teamName" required maxlength="50" placeholder="예: 전공 팀플 A조"></div>
+<div class="field" style="margin-top:10px"><label for="creatorName">생성자 이름</label><input id="creatorName" required maxlength="30" placeholder="이름"></div>
+<div class="actions"><button type="submit">팀 생성</button></div>
+</form>
+<form id="joinForm">
+<div class="field"><label for="joinCode">팀 참여 코드</label><input id="joinCode" required maxlength="8" placeholder="예: A1B2C3"></div>
+<div class="field" style="margin-top:10px"><label for="joinName">참여자 이름</label><input id="joinName" required maxlength="30" placeholder="이름"></div>
+<div class="actions"><button type="submit" class="secondary">팀 참여</button></div>
+</form>
+</div><div id="teamNotice" class="notice" role="status"></div>
+</section>
+<section id="workspace" class="card hidden">
+<div class="teamhead"><div><h2 id="activeTeamName">팀</h2><div class="muted">참여 코드: <span id="activeCode" class="code"></span></div></div><button id="leaveTeam" class="secondary" type="button">팀 화면 닫기</button></div>
+<div class="muted" style="margin-top:8px">현재 팀원: <span id="memberCount">0</span>명</div>
+<div id="memberList" class="list"></div>
+</section>
+<section id="scheduleSection" class="card hidden">
+<h2>2. 가능한 시간 입력</h2>
+<form id="scheduleForm">
+<input type="hidden" id="editId">
+<div class="grid">
+<div class="field"><label for="scheduleMember">팀원</label><select id="scheduleMember" required></select></div>
+<div class="field"><label for="scheduleDate">날짜</label><input id="scheduleDate" type="date" required></div>
+<div class="field"><label for="startTime">시작 시간</label><input id="startTime" type="time" required value="09:00"></div>
+<div class="field"><label for="endTime">종료 시간</label><input id="endTime" type="time" required value="10:00"></div>
+</div>
+<div class="actions"><button id="saveSchedule" type="submit">가능 시간 추가</button><button id="cancelEdit" type="button" class="secondary hidden">수정 취소</button></div>
+</form>
+<div id="scheduleNotice" class="notice" role="status"></div>
+<h2 style="margin-top:22px">팀원별 입력 시간</h2><div id="scheduleList" class="list"></div>
+</section>
+<section id="commonSection" class="card hidden">
+<h2>3. 공통 가능 시간 찾기</h2>
+<div class="grid">
+<div class="field"><label for="meetingDuration">희망 회의 시간</label><select id="meetingDuration"><option value="30">30분</option><option value="60" selected>1시간</option><option value="90">1시간 30분</option><option value="120">2시간</option></select></div>
+<div class="field"><label for="sortBy">추천 정렬</label><select id="sortBy"><option value="date">날짜·시간 빠른 순</option><option value="long">긴 시간대 우선</option></select></div>
+</div>
+<div class="actions"><button id="calculate" type="button">공통 시간 계산</button></div>
+<div id="commonNotice" class="notice" role="status"></div><div id="recommendations" class="list"></div>
+</section>
+<section id="confirmSection" class="card hidden">
+<h2>4. 일정 확정 및 확인</h2>
+<div class="muted">공통 가능 시간 중 하나를 선택해 확정할 수 있습니다.</div>
+<div id="confirmedBox" class="list"></div>
+<div id="confirmNotice" class="notice" role="status"></div>
+</section>
+</main>
+<script>
+const STORAGE_KEY='team-time-planner-v1';
+let db=loadDB(), activeCode=null, lastRecommendations=[];
+function loadDB(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{teams:{}}}catch{return {teams:{}}}}
+function saveDB(){localStorage.setItem(STORAGE_KEY,JSON.stringify(db))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function codeGen(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let c;do{c=Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('')}while(db.teams[c]);return c}
+function notice(id,msg,error=false){const el=document.getElementById(id);el.textContent=msg;el.className='notice'+(error?' error':'');el.style.display='block'}
+function hideNotice(id){document.getElementById(id).style.display='none'}
+function team(){return activeCode?db.teams[activeCode]:null}
+function showWorkspace(){const t=team();const ids=['workspace','scheduleSection','commonSection','confirmSection'];ids.forEach(id=>document.getElementById(id).classList.toggle('hidden',!t));if(!t)return;
+document.getElementById('activeTeamName').textContent=t.name;document.getElementById('activeCode').textContent=activeCode;document.getElementById('memberCount').textContent=t.members.length;
+document.getElementById('memberList').innerHTML=t.members.map(m=>`<div class="item"><div><strong>${esc(m.name)}</strong><small>${m.name===t.creator?'팀 생성자':'팀원'}</small></div></div>`).join('');
+const sel=document.getElementById('scheduleMember');const old=sel.value;sel.innerHTML=t.members.map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('');if(t.members.some(m=>m.name===old))sel.value=old;
+renderSchedules();renderConfirmed();hideNotice('scheduleNotice');hideNotice('commonNotice');hideNotice('confirmNotice');}
+function renderSchedules(){const t=team();if(!t)return;const el=document.getElementById('scheduleList');if(!t.schedules.length){el.innerHTML='<div class="empty">아직 입력된 시간이 없습니다.</div>';return}
+el.innerHTML=[...t.schedules].sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start)).map(s=>`<div class="item"><div><strong>${esc(s.member)} · ${esc(s.date)}</strong><small>${esc(s.start)}–${esc(s.end)}</small></div><div class="actions"><button class="secondary" type="button" data-edit="${s.id}">수정</button><button class="danger" type="button" data-delete="${s.id}">삭제</button></div></div>`).join('');
+el.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editSchedule(b.dataset.edit));el.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteSchedule(b.dataset.delete));}
+function renderConfirmed(){const t=team();if(!t)return;const el=document.getElementById('confirmedBox');if(!t.confirmed){el.innerHTML='<div class="empty">아직 확정된 일정이 없습니다.</div>';return}el.innerHTML=`<div class="item recommend"><div><strong>확정된 팀플 일정</strong><small>${esc(t.confirmed.date)} · ${esc(t.confirmed.start)}–${esc(t.confirmed.end)}</small></div><span class="pill">확정</span></div><div class="status">팀원별 일정 입력 현황: ${t.members.filter(m=>t.schedules.some(s=>s.member===m.name)).length}/${t.members.length}명 입력</div>`}
+function setActive(code){activeCode=code;showWorkspace()}
+document.getElementById('createForm').addEventListener('submit',e=>{e.preventDefault();const name=document.getElementById('teamName').value.trim(),creator=document.getElementById('creatorName').value.trim();if(!name||!creator){notice('teamNotice','팀 이름과 생성자 이름을 입력해 주세요.',true);return}const code=codeGen();db.teams[code]={name,creator,members:[{name:creator}],schedules:[],confirmed:null};saveDB();setActive(code);notice('teamNotice',`팀 생성 완료! 참여 코드는 ${code}입니다. 팀원에게 코드를 공유하세요.`);e.target.reset()});
+document.getElementById('joinForm').addEventListener('submit',e=>{e.preventDefault();const code=document.getElementById('joinCode').value.trim().toUpperCase(),name=document.getElementById('joinName').value.trim(),t=db.teams[code];if(!t){notice('teamNotice','참여 코드가 올바르지 않습니다.',true);return}if(!name){notice('teamNotice','팀원 이름을 입력해 주세요.',true);return}if(t.members.some(m=>m.name.toLowerCase()===name.toLowerCase())){notice('teamNotice','이미 등록된 이름입니다. 다른 이름을 입력해 주세요.',true);return}t.members.push({name});saveDB();setActive(code);notice('teamNotice',`${t.name} 팀 참여가 완료되었습니다.`);e.target.reset()});
+document.getElementById('leaveTeam').onclick=()=>{activeCode=null;showWorkspace()};
+document.getElementById('scheduleForm').addEventListener('submit',e=>{e.preventDefault();const t=team();if(!t)return;const member=document.getElementById('scheduleMember').value,date=document.getElementById('scheduleDate').value,start=document.getElementById('startTime').value,end=document.getElementById('endTime').value,editId=document.getElementById('editId').value;if(!member||!date||!start||!end){notice('scheduleNotice','팀원, 날짜, 시작 시간, 종료 시간을 모두 입력해 주세요.',true);return}if(end<=start){notice('scheduleNotice','종료 시간은 시작 시간보다 늦어야 합니다.',true);return}
+const s={id:editId||String(Date.now())+Math.random().toString(16).slice(2),member,date,start,end};if(editId){const i=t.schedules.findIndex(x=>x.id===editId);if(i<0){notice('scheduleNotice','수정할 일정을 찾을 수 없습니다.',true);return}t.schedules[i]=s}else t.schedules.push(s);saveDB();e.target.reset();document.getElementById('editId').value='';document.getElementById('startTime').value='09:00';document.getElementById('endTime').value='10:00';document.getElementById('saveSchedule').textContent='가능 시간 추가';document.getElementById('cancelEdit').classList.add('hidden');showWorkspace();notice('scheduleNotice',editId?'일정을 수정했습니다.':'가능 시간을 추가했습니다.')});
+function editSchedule(id){const s=team().schedules.find(x=>x.id===id);if(!s){notice('scheduleNotice','수정할 일정을 찾을 수 없습니다.',true);return}document.getElementById('editId').value=s.id;document.getElementById('scheduleMember').value=s.member;document.getElementById('scheduleDate').value=s.date;document.getElementById('startTime').value=s.start;document.getElementById('endTime').value=s.end;document.getElementById('saveSchedule').textContent='일정 수정 저장';document.getElementById('cancelEdit').classList.remove('hidden');document.getElementById('scheduleSection').scrollIntoView({behavior:'smooth',block:'start'})}
+function deleteSchedule(id){const t=team(),i=t.schedules.findIndex(x=>x.id===id);if(i<0){notice('scheduleNotice','삭제할 일정을 찾을 수 없습니다.',true);return}t.schedules.splice(i,1);saveDB();showWorkspace();notice('scheduleNotice','일정을 삭제했습니다.')}
+document.getElementById('cancelEdit').onclick=()=>{document.getElementById('scheduleForm').reset();document.getElementById('editId').value='';document.getElementById('startTime').value='09:00';document.getElementById('endTime').value='10:00';document.getElementById('saveSchedule').textContent='가능 시간 추가';document.getElementById('cancelEdit').classList.add('hidden')};
+function mins(s){const [h,m]=s.split(':').map(Number);return h*60+m}function hhmm(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
+function compute(){const t=team();if(!t)return[];if(t.members.some(m=>!t.schedules.some(s=>s.member===m.name))){notice('commonNotice','모든 팀원이 가능한 시간을 하나 이상 입력해야 계산할 수 있습니다.',true);document.getElementById('recommendations').innerHTML='';return null}
+const duration=Number(document.getElementById('meetingDuration').value),byDate={};t.schedules.forEach(s=>(byDate[s.date]??={})[s.member]??=[]);
+t.schedules.forEach(s=>byDate[s.date][s.member].push({start:mins(s.start),end:mins(s.end)}));
+const results=[];for(const [date,memberMap] of Object.entries(byDate)){if(!t.members.every(m=>(memberMap[m.name]||[]).length))continue;
+let intersections=memberMap[t.members[0].name].map(x=>({...x}));for(const m of t.members.slice(1)){const next=[];for(const a of intersections)for(const b of memberMap[m.name]){const start=Math.max(a.start,b.start),end=Math.min(a.end,b.end);if(end>start)next.push({start,end})}intersections=next}
+intersections.forEach(x=>{if(x.end-x.start>=duration)results.push({date,start:hhmm(x.start),end:hhmm(x.end),duration:x.end-x.start})})}
+const unique=[...new Map(results.map(x=>[x.date+'|'+x.start+'|'+x.end,x])).values()];unique.sort((a,b)=>document.getElementById('sortBy').value==='long'?(b.duration-a.duration||a.date.localeCompare(b.date)||a.start.localeCompare(b.start)):(a.date+a.start).localeCompare(b.date+b.start));return unique}
+document.getElementById('calculate').onclick=()=>{const t=team();if(!t)return;const results=compute();if(results===null)return;lastRecommendations=results;const el=document.getElementById('recommendations');if(!results.length){el.innerHTML='<div class="empty">희망 회의 시간에 맞는 공통 가능 시간이 없습니다. 희망 시간을 줄이거나 일정을 다시 입력해 주세요.</div>';notice('commonNotice','공통 가능 시간이 없습니다.',true);return}notice('commonNotice',`공통 가능 시간 ${results.length}개를 찾았습니다.`);el.innerHTML=results.map((r,i)=>`<div class="item recommend"><div><strong>${i+1}. ${esc(r.date)} · ${esc(r.start)}–${esc(r.end)}</strong><small>공통 가능 시간 ${Math.floor(r.duration/60)}시간 ${r.duration%60? r.duration%60+'분':''}</small></div><button type="button" data-confirm="${i}">이 시간 확정</button></div>`).join('');el.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>confirmTime(Number(b.dataset.confirm)))};
+function confirmTime(i){const t=team(),r=lastRecommendations[i];if(!t||!r)return;const valid=compute();if(!valid||!valid.some(x=>x.date===r.date&&x.start===r.start&&x.end===r.end)){notice('confirmNotice','공통 가능 시간에 해당하지 않아 확정할 수 없습니다.',true);return}t.confirmed={date:r.date,start:r.start,end:hhmm(mins(r.start)+Number(document.getElementById('meetingDuration').value))};saveDB();renderConfirmed();notice('confirmNotice','팀플 일정이 확정되었습니다.');}
+document.getElementById('meetingDuration').onchange=()=>{lastRecommendations=[];document.getElementById('recommendations').innerHTML='';hideNotice('commonNotice')};document.getElementById('sortBy').onchange=()=>{if(lastRecommendations.length)document.getElementById('calculate').click()};
+showWorkspace();
+</script>
+</body>
+</html>
